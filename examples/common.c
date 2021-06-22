@@ -17,6 +17,8 @@
 
 #ifndef _WIN32
 # include <unistd.h>
+# include <sys/types.h>
+# include <dirent.h>
 #endif
 #include <errno.h>
 
@@ -147,6 +149,47 @@ cleanup:
 	return error;
 }
 
+static const char * repo_base_path(git_repository *repo)
+{
+	const char *workdir_path = git_repository_workdir(repo);
+
+	// If we don't have a working directory for the repository,
+	// default to the directory we would put the ".git" folder in.
+	if (workdir_path == NULL) {
+		workdir_path = git_repository_path(repo);
+	}
+
+	return workdir_path;
+}
+
+void get_repopath_to(char **out_path, const char *target, git_repository *repo)
+{
+	const char *workdir_path = repo_base_path(repo);
+
+	path_relative_to(out_path, target, workdir_path);
+}
+
+void get_relpath_to(char **out_path, const char *target_path, git_repository *repo)
+{
+	const char *repo_path = repo_base_path(repo);
+	char *program_path = getcwd(NULL, 0);
+
+	const char *target_abspath = NULL;
+	char *target_abspath_builder = NULL;
+
+	if (target_path[0] != '/') {
+		join_paths(&target_abspath_builder, repo_path, target_path);
+		target_abspath = target_abspath_builder;
+	} else {
+		target_abspath = target_path;
+	}
+
+	path_relative_to(out_path, target_abspath, program_path);
+
+	free(target_abspath_builder);
+	free(program_path);
+}
+
 static int readline(char **out)
 {
 	int c, error = 0, length = 0, allocated = 0;
@@ -192,17 +235,123 @@ error:
 	return error;
 }
 
-static int ask(char **out, const char *prompt, char optional)
+int ask(char **out, const char *prompt, char optional)
 {
 	printf("%s ", prompt);
 	fflush(stdout);
 
 	if (readline(out) <= 0 && !optional) {
-		fprintf(stderr, "Could not read response: %s\n", strerror(errno));
+		fprintf(stderr, "Could not read response: %s\n",
+				errno != 0 ? strerror(errno) : "No message");
 		return -1;
 	}
 
 	return 0;
+}
+
+static int ask_for_ssh_key(char **privkey, const char *suggested_keys_directory)
+{
+	int result = 0;
+	int num_suggestions = 0;
+	int answer_asnum = -1;
+	int i;
+	char **suggestions = NULL;
+	int listing_failure = 0;
+
+#ifndef _WIN32
+	int dir_fd = open(suggested_keys_directory, O_DIRECTORY | O_RDONLY);
+	DIR *dir = NULL;
+
+	if (dir_fd != -1) {
+		dir = fdopendir(dir_fd);
+	}
+
+	if (dir != NULL) {
+		struct dirent *entry = NULL;
+
+		printf("SSH keys in %s:\n", suggested_keys_directory);
+
+		// On POSIX, we can list the contents of a directory:
+		while ((entry = readdir(dir)) != NULL) {
+			const char *name = entry->d_name;
+			const char *ext = file_extension_from_path(name);
+
+			// Only count id_*, but not public key files.
+			if (strncmp(name, "id_", 3) == 0 && strcmp(ext, ".pub") != 0) {
+				num_suggestions ++;
+				printf(" %d\t\t%s\n", num_suggestions, name);
+
+				// Check for overflow.
+				if (num_suggestions < 0) {
+					fprintf(stderr, "Too many paths to list.\n");
+					return -1;
+				}
+			}
+		}
+
+		rewinddir(dir);
+		suggestions = (char **) malloc(sizeof(char *) * num_suggestions);
+		i = 0;
+
+		while ((entry = readdir(dir)) != NULL) {
+			const char *name = entry->d_name;
+			const char *ext = file_extension_from_path(name);
+
+			if (strncmp(name, "id_", 3) == 0 && strcmp(ext, ".pub") != 0
+						&& i < num_suggestions) {
+				join_paths(&suggestions[i], suggested_keys_directory, name);
+				i++;
+			}
+		}
+
+		for (; i < num_suggestions; i++) {
+			suggestions[i] = NULL;
+		}
+
+		if (num_suggestions == 0) {
+			printf(" [ No suggested keys ] \n");
+		}
+
+		printf("\n");
+		printf("Enter the number to the left of the desired key ");
+		printf("or the path to some other SSH key (the private key).\n");
+
+		closedir(dir);
+	} else {
+		fprintf(stderr, "Warning: Unable to list keys in %s: %s (%d).\n",
+				suggested_keys_directory, strerror(errno), errno);
+		listing_failure = 1;
+	}
+
+#else
+	listing_failure = 1;
+#endif
+
+	if (listing_failure) {
+		printf("Enter the path to a private SSH key.\n");
+	}
+
+	result = ask(privkey, "SSH Key:", 0);
+
+	if (result >= 0) {
+		answer_asnum = atoi(*privkey);
+
+		// Try to convert a number into one of the listed ssh keys.
+		if (answer_asnum > 0 && answer_asnum < num_suggestions + 1) {
+			const char *suggestion = suggestions[answer_asnum - 1];
+
+			free(*privkey);
+			*privkey = strcpy((char *) malloc(strlen(suggestion) + 1), suggestion);
+		}
+	}
+
+//cleanup:
+	for (i = 0; i < num_suggestions; i++) {
+		free(suggestions[i]);
+	}
+	free(suggestions);
+
+	return result;
 }
 
 int cred_acquire_cb(git_credential **out,
@@ -217,7 +366,6 @@ int cred_acquire_cb(git_credential **out,
 	// iOS addition: let's get the config file
 	git_config* cfg = NULL;
 	git_config_entry *entry = NULL;
-	char* newPrivkey = NULL;
 
 	UNUSED(url);
 	/* UNUSED(payload); */
@@ -270,34 +418,40 @@ int cred_acquire_cb(git_credential **out,
 				error = git_config_get_entry(&entry, cfg, "user.password");
 				if (error >= 0)
 					password = strdup(entry->value);
+				else
+					error = ask(&password, "Password:", 1);
 			} else {
 				const git_error* err = git_error_last();
 				printf("No user.identityFile found in git config: %s.\n", err->message);
 			}
 		}
+
 		if (privkey == NULL) {
-			if ((error = ask(&privkey, "SSH Key:", 0)) < 0 ||
-					(error = ask(&password, "Password:", 1)) < 0)
+			char *suggested_ssh_path = NULL;
+			n = snprintf(NULL, 0, "%s/.ssh/", home);
+
+			suggested_ssh_path = (char *) malloc(n + 1);
+			snprintf(suggested_ssh_path, n + 1, "%s/.ssh/", home);
+
+			if ((error = ask_for_ssh_key(&privkey, suggested_ssh_path)) < 0 ||
+					(error = ask(&password, "Password:", 1)) < 0) {
+				free(suggested_ssh_path);
 				goto out;
+			}
 			printf("Consider running,\n");
 			printf("    lg2 config user.identityFile '%s'\n", privkey);
 			if (strcmp(password, "") != 0) {
 				printf("    lg2 config user.password 'your_password_here'\n");
+			} else {
+				printf("    lg2 config user.password \"\"\n");
 			}
-			printf("to save this username/password pair.\n");
+			printf("to save this username/password pair.\n\n");
+
+			free(suggested_ssh_path);
 		}
 
-		// iOS: we only expand ~/
-		home = getenv("HOME");
-		if ((strncmp(privkey, "~/", 2) == 0) && (home != NULL)) {
-			n = snprintf(NULL, 0, "%s/%s", home, privkey + 1);
-			newPrivkey = malloc(n + 1);
-			if (newPrivkey != NULL) {
-				snprintf(newPrivkey, n + 1, "%s/%s", home, privkey + 1);
-				free(privkey);
-				privkey = newPrivkey;
-			}
-		}
+		// For compatability with iOS, we only expand ~/
+		expand_path(&privkey);
 
 		if ((n = snprintf(NULL, 0, "%s.pub", privkey)) < 0 ||
 		    (pubkey = malloc(n + 1)) == NULL ||
@@ -357,7 +511,7 @@ int certificate_confirm_cb(struct git_cert *cert,
 		return 0;
 	}
 
-	printf("Invalid certificate for host %s.\n", host);
+	printf("Certificate for host '%s' may not be valid.\n", host);
 	ask(&do_connect, "Connect anyway? y/[n] ", 0);
 
 	if (do_connect != NULL && strcmp(do_connect, "y") == 0) {
@@ -365,6 +519,20 @@ int certificate_confirm_cb(struct git_cert *cert,
 		return 0;
 	} else {
 		return -1; // Don't connect.
+	}
+}
+
+void handle_signature_create_error(int source_err)
+{
+	const git_error *err = git_error_last();
+	fprintf(stderr, "Error creating signature.\n");
+
+	if ((err && err->klass == GIT_ERROR_CONFIG) || source_err == GIT_ENOTFOUND) {
+		fprintf(stderr, "This seems to be a configuration error, ");
+		fprintf(stderr,
+			"probably the result of missing or invalid "
+			"author information.\n");
+		fprintf(stderr, INSTRUCTIONS_FOR_STORING_AUTHOR_INFORMATION);
 	}
 }
 

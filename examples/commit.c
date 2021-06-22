@@ -37,6 +37,7 @@ static int parse_options(commit_options *out, int argc, char **argv);
  * This does have:
  *
  * - Example of performing a git commit with a comment
+ * - Example of amending a commit
  *
  */
 int lg2_commit(git_repository *repo, int argc, char **argv)
@@ -88,7 +89,12 @@ int lg2_commit(git_repository *repo, int argc, char **argv)
 
 	check_lg2(git_tree_lookup(&tree, repo, &tree_oid), "Error looking up tree", NULL);
 
-	check_lg2(git_signature_default(&signature, repo), "Error creating signature", NULL);
+	error = git_signature_default(&signature, repo);
+	if (error) {
+		handle_signature_create_error(error);
+
+		goto cleanup;
+	}
 
 	if (opts.amend_head) {
 		error = get_repo_head(&old_head, repo);

@@ -53,6 +53,7 @@
 #define UNUSED(x) (void)(x)
 
 #include "args.h"
+#include "path.h"
 
 extern int lg2_add(git_repository *repo, int argc, char **argv);
 
@@ -75,6 +76,7 @@ extern int lg2_index_pack(git_repository *repo, int argc, char **argv);
 extern int lg2_init(git_repository *repo, int argc, char **argv);
 extern int lg2_log(git_repository *repo, int argc, char **argv);
 extern int lg2_ls_files(git_repository *repo, int argc, char **argv);
+extern int lg2_rebase(git_repository *repo, int argc, char **argv);
 extern int lg2_ls_remote(git_repository *repo, int argc, char **argv);
 extern int lg2_merge(git_repository *repo, int argc, char **argv);
 extern int lg2_push(git_repository *repo, int argc, char **argv);
@@ -101,6 +103,16 @@ extern void check_lg2(int error, const char *message, const char *extra);
  * @return NUL-terminated buffer if the file was successfully read, NULL-pointer otherwise
  */
 extern char *read_file(const char *path);
+
+/**
+ * Ask the user for input via stdin.
+ *
+ * @param out Pointer to where to store the user's response
+ * @param prompt NUL-terminated prompt string
+ * @param optional 0 iff optional
+ * @return -1 on failure
+ */
+extern int ask(char **out, const char *prompt, char optional);
 
 /**
  * Exit the program, printing error to stderr
@@ -137,6 +149,19 @@ extern int resolve_refish(git_annotated_commit **commit, git_repository *repo, c
 extern int get_repo_head(git_commit **commit, git_repository *repo);
 
 /**
+ * Convert a path relative to the current working directory into a path
+ * relative to the repository's working (or base, if bare) directory.
+ */
+extern void get_repopath_to(char **out_path, const char *target_relpath, git_repository *repo);
+
+/**
+ * Opposite of get_repopath_to.
+ * Returns the path to (repo-workdir-relative) target relative to
+ * the **program**'s current working directory.
+ */
+extern void get_relpath_to(char **out_path, const char *target_repopath, git_repository *repo);
+
+/**
  * Acquire credentials via command line
  */
 extern int cred_acquire_cb(git_credential **out,
@@ -161,9 +186,31 @@ extern int certificate_confirm_cb(struct git_cert *cert,
 		const char *host,
 		void *payload);
 
+/**
+ * Log information related to a signature creation error.
+ *
+ * @param source_error is the return code from the attempt to get the user's
+ * 		signature.
+ */
+extern void handle_signature_create_error(int source_error);
+
+/**
+ * Repeated documentation output.
+ */
+#define INSTRUCTIONS_FOR_STORING_AUTHOR_INFORMATION \
+		  "Try running \n" \
+		  "    lg2 config user.name 'Your Name'\n" \
+		  "    lg2 config user.email youremail@example.com\n" \
+		  "to provide authorship information for new commits " \
+		  "in this repository.\n" \
+		  "This information is used to label new commits " \
+		  "and will travel with them " \
+		  "(e.g. it's shared with servers when you `lg2 push`).\n"
+
 // iOS/OSX architecture definitions
 #include <TargetConditionals.h>
-#if TARGET_OS_IPHONE 
+#if TARGET_OS_IPHONE
+
 #include "ios_error.h"
 #define isatty ios_isatty
 #define fork   ios_fork
@@ -174,5 +221,13 @@ extern int certificate_confirm_cb(struct git_cert *cert,
 #define stdout thread_stdout
 #define stderr thread_stderr
 #define printf(args...) fprintf(thread_stdout, args)
+#define DOCUMENTATION_EXPECTED_HOMEDIR "~/Documents/"
+
+#else
+
+#define DOCUMENTATION_EXPECTED_HOMEDIR "~/"
+
 #endif
+
+
 #endif

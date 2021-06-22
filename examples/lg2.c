@@ -31,6 +31,7 @@ struct {
 	{ "merge",        lg2_merge,        1 },
 	{ "push",         lg2_push,         1 },
 	{ "pull",         lg2_pull,         1 },
+	{ "rebase",       lg2_rebase,       1 },
 	{ "remote",       lg2_remote,       1 },
 	{ "reset",        lg2_reset,        1 },
 	{ "rev-list",     lg2_rev_list,     1 },
@@ -76,6 +77,9 @@ int main(int argc, char **argv)
 	const char *git_dir = NULL;
 	int return_code = 1;
 	size_t i;
+
+	if (test_path_lib())
+		fprintf(stderr, "Warning: Path library failed tests.\n");
 
 	if (argc < 2)
 		usage(argv[0]);
