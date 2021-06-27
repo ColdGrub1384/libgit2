@@ -11,6 +11,7 @@ struct {
 	char requires_repo;
 } commands[] = {
 	{ "add",          lg2_add,          1 },
+	{ "rm",           lg2_add,          1 },
 	{ "blame",        lg2_blame,        1 },
 	{ "branch",       lg2_branch,       1 },
 	{ "cat-file",     lg2_cat_file,     1 },
@@ -22,7 +23,10 @@ struct {
 	{ "diff",         lg2_diff,         1 },
 	{ "fetch",        lg2_fetch,        1 },
 	{ "for-each-ref", lg2_for_each_ref, 1 },
-	{ "general",      lg2_general,      0 },
+// Uncomment to test the general example. Hidden
+// because, while an important example, it doesn't
+// make sense for general use.
+//	{ "general",      lg2_general,      0 },
 	{ "index-pack",   lg2_index_pack,   1 },
 	{ "init",         lg2_init,         0 },
 	{ "log",          lg2_log,          1 },
@@ -50,7 +54,7 @@ static int run_command(git_command_fn fn, git_repository *repo, struct args_info
 	error = fn(repo, args.argc - args.pos, &args.argv[args.pos]);
 	if (error < 0) {
 		if (git_error_last() == NULL) {
-			fprintf(stderr, "Error has no message.\n");
+			fprintf(stderr, "Warning: An error occurred!\n");
 		} else {
 			fprintf(stderr, "Bad news:\n %s\n", git_error_last()->message);
 		}
