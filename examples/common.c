@@ -592,23 +592,15 @@ static void print_hostkey_hash(const git_cert_hostkey *ssh_cert)
 	}
 
 	if (ssh_cert->type & GIT_CERT_SSH_SHA1) {
-		printf("SHA1: ");
+		printf("SHA-1: ");
 		print_b64(ssh_cert->hash_sha1, sizeof(ssh_cert->hash_sha1));
 		printf("\n");
 	}
 
 	if (ssh_cert->type & GIT_CERT_SSH_SHA256) {
-		printf("SHA256: ");
+		printf("SHA-256: ");
 		print_b64(ssh_cert->hash_sha256, sizeof(ssh_cert->hash_sha256));
 		printf("\n");
-	}
-
-	if (ssh_cert->type & GIT_CERT_SSH_RAW) {
-		printf("[Note] The raw certificate is available.\n");
-	}
-
-	if (ssh_cert->type == 0) {
-		printf("Beware: No certificate hash information available.\n");
 	}
 }
 
@@ -711,12 +703,13 @@ static int is_host_unknown(git_cert_hostkey *cert, const char *hostname)
 {
 	int error = -1; // Assume failure unless set otherwise.
 	int num_knownhosts = 0;
+	int updated_knownhosts = 0;
 
 	LIBSSH2_SESSION *session = NULL;
 	LIBSSH2_KNOWNHOSTS *hosts = NULL;
 	const char *key = NULL;
 	int typemask = LIBSSH2_KNOWNHOST_TYPE_PLAIN | LIBSSH2_KNOWNHOST_KEYENC_RAW;
-	size_t key_hash_size = 0;
+	size_t key_len = 0;
 
 	char *knownhosts_filepath = get_knownhosts_filepath();
 	if (knownhosts_filepath == NULL) {
@@ -734,7 +727,7 @@ static int is_host_unknown(git_cert_hostkey *cert, const char *hostname)
 
 	hosts = libssh2_knownhost_init(session);
 	num_knownhosts = libssh2_knownhost_readfile(hosts, knownhosts_filepath, LIBSSH2_KNOWNHOST_FILE_OPENSSH);
-	if (num_knownhosts <= 0) {
+	if (num_knownhosts < 0) {
 		char *errmsg = NULL;
 		libssh2_session_last_error(session, &errmsg, NULL, 1);
 
@@ -749,41 +742,20 @@ static int is_host_unknown(git_cert_hostkey *cert, const char *hostname)
 
 	printf("There are %d known hosts...\n", num_knownhosts);
 
-	if (cert->type & GIT_CERT_SSH_SHA256) {
-		key = (const char *) cert->hash_sha256;
-		key_hash_size = sizeof(cert->hash_sha256);
-	} else if (cert->type & GIT_CERT_SSH_MD5) {
-		key = (const char *) cert->hash_md5;
-		key_hash_size = sizeof(cert->hash_md5);
-	} else if (cert->type & GIT_CERT_SSH_SHA1) {
-		key = (const char *) cert->hash_sha1;
-		key_hash_size = sizeof(cert->hash_sha1);
-	} else {
-		fprintf(stderr, "Certificate was not hashed using a supported hash type (SHA256 or MD5).\n");
+	if ((cert->type & GIT_CERT_SSH_RAW) == 0) {
+		fprintf(stderr, "Raw certificate data is unavailable. Unable to check host.\n");
 		error = -1;
 		goto cleanup;
 	}
 
-	error = libssh2_knownhost_check(hosts, hostname, key, key_hash_size, typemask, NULL);
+	key = cert->hostkey;
+	key_len = cert->hostkey_len;
+
+	error = libssh2_knownhost_check(hosts, hostname, key, key_len, typemask, NULL);
 	switch (error) {
 		case LIBSSH2_KNOWNHOST_CHECK_MATCH:
 			printf("Host %s is in known_hosts!\n", hostname);
 			error = 0;
-			break;
-		case LIBSSH2_KNOWNHOST_CHECK_NOTFOUND:
-			fprintf(stderr, "No key was found for %s in %s.\n",
-					hostname, knownhosts_filepath);
-
-			error = ask_add_knownhost_key(session, hosts, hostname, key, key_hash_size,
-					get_libssh2_cert_type(cert));
-			if (!error) {
-				error = libssh2_knownhost_writefile(hosts, knownhosts_filepath,
-						LIBSSH2_KNOWNHOST_FILE_OPENSSH);
-
-				if (error) {
-					fprintf(stderr, "Error while writing to %s.\n", knownhosts_filepath);
-				}
-			}
 			break;
 		case LIBSSH2_KNOWNHOST_CHECK_FAILURE:
 			fprintf(stderr,
@@ -792,16 +764,37 @@ static int is_host_unknown(git_cert_hostkey *cert, const char *hostname)
 					knownhosts_filepath, hostname);
 			error = 1;
 			break;
+		case LIBSSH2_KNOWNHOST_CHECK_NOTFOUND:
+			fprintf(stderr, "No key was found for %s in %s.\n",
+					hostname, knownhosts_filepath);
+
+			error = ask_add_knownhost_key(session, hosts, hostname, key, key_len,
+					get_libssh2_cert_type(cert));
+			updated_knownhosts = !error;
+			break;
 		case LIBSSH2_KNOWNHOST_CHECK_MISMATCH:
 			fprintf(stderr,
-					"ERROR: Key for %s does not match that in known_hosts! "
-					"    "
-					"    Please ensure that you really are connecting to the correct "
-					"    host.\n",
+					"Warning: Key for %s does not match that in known_hosts! \n"
+					"    \n"
+					"    Please ensure that you really are connecting to the correct \n"
+					"    host.\n\n",
 					hostname);
-			error = -2;
+			error = ask_add_knownhost_key(session, hosts, hostname, key, key_len,
+					get_libssh2_cert_type(cert));
+			updated_knownhosts = !error;
 			break;
 	}
+
+
+	if (updated_knownhosts) {
+		error = libssh2_knownhost_writefile(hosts, knownhosts_filepath,
+				LIBSSH2_KNOWNHOST_FILE_OPENSSH);
+
+		if (error) {
+			fprintf(stderr, "Error while writing to %s.\n", knownhosts_filepath);
+		}
+	}
+
 
 cleanup:
 	libssh2_session_free(session);
@@ -831,13 +824,16 @@ int certificate_confirm_cb(struct git_cert *cert,
 	 * At the time of this writing, libgit2 states that "we don't currently
 	 * trust any hostkeys".
 	 *
-	 * As such, we need to check this ourselves.
+	 * As such, we need to check known_hosts ourselves.
 	 */
 	if (cert->cert_type == GIT_CERT_HOSTKEY_LIBSSH2) {
 		git_cert_hostkey *ssh_cert = (git_cert_hostkey *) cert;
 
 		printf("\nHost: %s\n", hostname);
+		printf("Public key hashes:\n");
 		print_hostkey_hash(ssh_cert);
+		printf("\n");
+
 		if (!is_host_unknown(ssh_cert, hostname)) {
 			// If it's known, its certificate is valid.
 			return 0;
