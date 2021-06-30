@@ -13,7 +13,7 @@ let package = Package(
         .binaryTarget(
             name: "lg2",
             url: "https://github.com/holzschu/libgit2/releases/download/1.0/lg2.xcframework.zip",
-            checksum: "a05c827038833513d73c375860e146d06ba41954ac1be0112e183e3a1fc7e0ea"
+            checksum: "0305194675e6907f014cc06e7bf1198c904ed123fc2cf01b3e3390eef09847b4"
         )
     ]
 )
