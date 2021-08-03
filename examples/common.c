@@ -375,13 +375,11 @@ int cred_acquire_cb(git_credential **out,
 	char *username = NULL, *password = NULL, *privkey = NULL, *pubkey = NULL;
 	git_repository* repo = (git_repository*) payload;
 	int error = 1;
-	// iOS addition: let's get the config file
 	git_config* cfg = NULL;
 	git_config_entry *entry = NULL;
 
 	UNUSED(url);
-	/* UNUSED(payload); */
-	/* iOS addition: get username, password, identityFile from config */
+	/* Get username, password, identityFile from config */
 	if (repo != NULL)
 		error = git_repository_config(&cfg, repo);
 	else
@@ -904,6 +902,26 @@ out:
 	if (fd >= 0)
 		close(fd);
 	return buf;
+}
+
+void print_repo_state_description(git_repository_state_t state) {
+	fprintf(stderr, "repository is in state %d\n", state);
+
+	if (state == GIT_REPOSITORY_STATE_MERGE) {
+		fprintf(stderr, "It looks like a merge is in progress. Either "
+			"resolve the conflicts (see `lg2 status`), `lg2 add` each changed "
+			"file and commit the result, or run `lg2 reset --hard HEAD` to stop the "
+			"merge.\n");
+	} else if (state == GIT_REPOSITORY_STATE_REBASE
+			|| state == GIT_REPOSITORY_STATE_REBASE_INTERACTIVE
+			|| state == GIT_REPOSITORY_STATE_REBASE_MERGE) {
+		fprintf(stderr, "It looks like a rebase is in progress. "
+				"If you want to cancel the rebase, run `lg2 rebase --abort`.\n");
+	} else if (state == GIT_REPOSITORY_STATE_NONE) {
+		fprintf(stderr, "This is the default state. Run lg2 rebase remote/branch"
+				" to rebase onto a branch, lg2 merge remote/branch to merge a branch"
+				" into the current.\n");
+	}
 }
 
 static int interactive_tests(void)
