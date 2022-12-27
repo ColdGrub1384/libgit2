@@ -47,6 +47,8 @@ struct {
 	{ "status",       lg2_status,       1 },
 	{ "submodule",    lg2_submodule,    1 },
 	{ "tag",          lg2_tag,          1 },
+	{ "version",      lg2_version,      0 },
+	{ "help",         lg2_help,         0 },
 };
 
 static int run_command(git_command_fn fn, git_repository *repo, struct args_info args)
@@ -66,15 +68,26 @@ static int run_command(git_command_fn fn, git_repository *repo, struct args_info
 	return !!error;
 }
 
-static int usage(const char *prog)
+static int usage(const char *prog, const int err)
 {
 	size_t i;
 
-	fprintf(stderr, "usage: %s <cmd>...\n\nAvailable commands:\n\n", prog);
+	FILE *out = err ? stderr : stdout;
+	fprintf(out, "usage: %s <cmd>...\n\nAvailable commands:\n\n", prog);
 	for (i = 0; i < ARRAY_SIZE(commands); i++)
-		fprintf(stderr, "\t%s\n", commands[i].name);
+		fprintf(out, "\t%s\n", commands[i].name);
 
-	exit(EXIT_FAILURE);
+	if (err) {
+                exit(EXIT_FAILURE);
+        } else {
+                return 1;
+        }
+}
+
+int lg2_help(git_repository *repo, int argc, char **argv) {
+	assert(argc >= 1);
+	usage(argv[0], 0);
+	return 1;
 }
 
 int main(int argc, char **argv)
@@ -89,7 +102,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Warning: Path library failed tests.\n");
 
 	if (argc < 2)
-		usage(argv[0]);
+		usage(argv[0], 1);
 
 	git_libgit2_init();
 
@@ -107,7 +120,7 @@ int main(int argc, char **argv)
 	}
 
 	if (args.pos == args.argc)
-		usage(argv[0]);
+		usage(argv[0], 1);
 
 	if (!git_dir)
 		git_dir = ".";
