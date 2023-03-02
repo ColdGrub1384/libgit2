@@ -51,7 +51,15 @@ int lg2_config(git_repository *repo, int argc, char **argv)
 	if (argc == 2) {
 		error = config_get(cfg, argv[1]);
 	} else if (argc == 3) {
-		error = config_set(cfg, argv[1], argv[2]);
+		// if config begins with $HOME, replace $HOME with "~".
+		char *home = getenv("HOME");
+		char homeLength = strlen(home);
+		if (strncmp(argv[2], home, homeLength) == 0) {
+			argv[2][homeLength - 1] = '~';
+			error = config_set(cfg, argv[1], argv[2]  + homeLength - 1);
+		} else {
+			error = config_set(cfg, argv[1], argv[2]);
+		}
 	} else {
 		printf("USAGE: lg2 %s <KEY> [<VALUE>]\n", argv[0]);
 

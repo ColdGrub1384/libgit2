@@ -255,6 +255,80 @@ int ask(char **out, const char *prompt, char optional)
 	return 0;
 }
 
+#if TARGET_OS_IPHONE
+// same as ask above, but without local echo
+static int readline_silent(char **out)
+{
+	int c, error = 0, length = 0, allocated = 0;
+	char *line = NULL;
+	int input; 
+
+	errno = 0;
+	ios_startInteractive();
+	input = ios_opentty();
+
+	while ((read(input, &c, 1)) == 1) {
+		if (length == allocated) {
+			allocated += 16;
+
+			if ((line = realloc(line, allocated)) == NULL) {
+				error = -1;
+				goto error;
+			}
+		}
+
+		if ((c == '\n') || (c == '\r'))
+			break;
+		
+		// Add ctrl-C + ctrl-D:
+		if ((c == 3) || (c == 4)) {
+			error = -1;
+			goto error;
+		}
+
+		line[length++] = c;
+	}
+
+	if (errno != 0) {
+		error = -1;
+		goto error;
+	}
+
+    // We encountered an EOF (line == NULL -> first
+	// getchar() was null).
+	if (line == NULL) {
+		error = -1;
+		errno = EIO; // Report generic IO error.
+		goto error;
+	}
+
+	line[length] = '\0';
+	*out = line;
+	line = NULL;
+	error = length;
+error:
+	fputc('\n', thread_stdout);
+	fflush(thread_stdout);
+    ios_closetty();
+    ios_stopInteractive();
+	free(line);
+	return error;
+}
+
+static int ask_password(char **out, const char* prompt, char optional) {
+	printf("%s ", prompt);
+	fflush(stdout);
+
+	if (readline_silent(out) <= 0 && !optional) {
+		fprintf(stderr, "Could not read response: %s\n",
+				errno != 0 ? strerror(errno) : "No message");
+		return -1;
+	}
+
+	return 0;
+}
+#endif
+
 static int ask_for_ssh_key(char **privkey, const char *suggested_keys_directory)
 {
 	int result = 0;
@@ -429,7 +503,11 @@ int cred_acquire_cb(git_credential **out,
 				if (error >= 0)
 					password = strdup(entry->value);
 				else
+#if TARGET_OS_IPHONE
+					error = ask_password(&password, "Password:", 1);
+#else
 					error = ask(&password, "Password:", 1);
+#endif
 			} else {
 				const git_error* err = git_error_last();
 				printf("No user.identityFile found in git config: %s.\n", err->message);
@@ -444,7 +522,11 @@ int cred_acquire_cb(git_credential **out,
 			snprintf(suggested_ssh_path, n + 1, "%s/.ssh/", home);
 
 			if ((error = ask_for_ssh_key(&privkey, suggested_ssh_path)) < 0 ||
+#if TARGET_OS_IPHONE
+					(error = ask_password(&password, "Password:", 1)) < 0) {
+#else
 					(error = ask(&password, "Password:", 1)) < 0) {
+#endif
 				free(suggested_ssh_path);
 				goto out;
 			}
@@ -477,7 +559,11 @@ int cred_acquire_cb(git_credential **out,
 			}
 		}
 		if (password == NULL) {
+#if TARGET_OS_IPHONE
+			if ((error = ask_password(&password, "Password:", 1)) < 0) {
+#else
 			if ((error = ask(&password, "Password:", 1)) < 0) {
+#endif
 				goto out;
 			}
 		}
