@@ -382,5 +382,8 @@ cleanup:
 	free((char **)opts.heads);
 	free(opts.annotated);
 
-	return 0;
+	// Previous code: error not returned
+	// return 0;
+	// New code: send the error back
+	return err;
 }
