@@ -70,7 +70,7 @@ static int check_extensions(git_config *config, int version);
 
 #define GIT_FILE_CONTENT_PREFIX "gitdir:"
 
-#define GIT_BRANCH_DEFAULT "master"
+#define GIT_BRANCH_DEFAULT "main"
 
 #define GIT_REPO_VERSION 0
 #define GIT_REPO_MAX_VERSION 1
