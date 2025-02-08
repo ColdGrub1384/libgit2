@@ -23,6 +23,8 @@
 #include <git2.h>
 #include <fcntl.h>
 
+#include <stdbool.h>
+
 #ifdef _WIN32
 # include <io.h>
 # include <Windows.h>
@@ -94,6 +96,11 @@ extern int lg2_tag(git_repository *repo, int argc, char **argv);
 extern int lg2_interactive_tests(git_repository *repo, int argc, char **argv);
 extern int lg2_version(git_repository *repo, int argc, char **argv);
 extern int lg2_help(git_repository *repo, int argc, char **argv);
+
+char *git_path_from_url(const char *url);
+char *git_ask_password(const char *title, const char *message);
+git_error_code git_create_credentials_with_keys(git_credential **_out, const char *username, const char *url);
+bool git_authenticate_using_password(const char *url);
 
 /**
  * Check libgit2 error code, printing error to stderr on failure and
