@@ -11,10 +11,6 @@ elseif(USE_SSH STREQUAL ON OR USE_SSH STREQUAL "libssh2")
 		set(LIBSSH2_LIBRARIES ${LIBSSH2_LIBRARY})
 		set(LIBSSH2_LDFLAGS "-lssh2")
 	endif()
- 
-	if(NOT LIBSSH2_FOUND)
-		message(FATAL_ERROR "LIBSSH2 not found. Set CMAKE_PREFIX_PATH if it is installed outside of the default search path.")
-	endif()
 
 	list(APPEND LIBGIT2_SYSTEM_INCLUDES ${LIBSSH2_INCLUDE_DIRS})
 	list(APPEND LIBGIT2_SYSTEM_LIBS ${LIBSSH2_LIBRARIES})
