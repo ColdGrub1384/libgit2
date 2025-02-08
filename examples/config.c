@@ -16,65 +16,81 @@
 
 static int config_get(git_config *cfg, const char *key)
 {
-	git_config_entry *entry;
-	int error;
+    git_config_entry *entry;
+    int error;
 
-	if ((error = git_config_get_entry(&entry, cfg, key)) < 0) {
-		if (error != GIT_ENOTFOUND)
-			fprintf(stderr, "Unable to get configuration: %s\n", git_error_last()->message);
-		return 1;
-	}
+    if ((error = git_config_get_entry(&entry, cfg, key)) < 0) {
+        if (error != GIT_ENOTFOUND)
+            printf("Unable to get configuration: %s\n", git_error_last()->message);
+        return 1;
+    }
 
-	puts(entry->value);
-	return 0;
+    puts(entry->value);
+
+    /* Free the git_config_entry after use with `git_config_entry_free()`. */
+    git_config_entry_free(entry);
+
+    return 0;
 }
 
 static int config_set(git_config *cfg, const char *key, const char *value)
 {
-	if (git_config_set_string(cfg, key, value) < 0) {
-		fprintf(stderr, "Unable to set configuration: %s\n", git_error_last()->message);
-		return 1;
-	}
-	return 0;
+    if (git_config_set_string(cfg, key, value) < 0) {
+        printf("Unable to set configuration: %s\n", git_error_last()->message);
+        return 1;
+    }
+    return 0;
 }
 
 int lg2_config(git_repository *repo, int argc, char **argv)
 {
-	git_config *cfg;
-	int error;
+    git_config *cfg;
+    int error;
+    
+    char *key = NULL;
+    char *value = NULL;
+    bool global = false;
+    bool unset = false;
+    
+    for (int i = 1; i < argc; i+=1) {
+        if (!strcmp(argv[i], "--global") && !key) {
+            global = true;
+        } else if (!strcmp(argv[i], "--unset") && !key) {
+            unset = true;
+        } else if (!key) {
+            key = argv[i];
+        } else if (!value) {
+            value = argv[i];
+        } else {
+            printf("USAGE: %s config [--global] <KEY> [<VALUE>]\n", argv[0]);
+            error = 1;
+        }
+    }
+    
+    if (global) {
+        if ((error = git_config_open_ondisk(&cfg, getenv("GIT_CONFIG"))) < 0) {
+            printf("Unable to obtain global config: %s\n", git_error_last()->message);
+            goto out;
+        }
+    } else {
+        if ((error = git_repository_config(&cfg, repo)) < 0) {
+            printf("Unable to obtain repository config: %s\n", git_error_last()->message);
+            goto out;
+        }
+    }
+    if (!value && key) {
+        error = config_get(cfg, key);
+    } else if (value && key && unset) {
+        error = git_config_delete_entry(cfg, key);
+    } else if (value && key) {
+        error = config_set(cfg, key, value);
+    }
 
-	if ((error = git_repository_config(&cfg, repo)) < 0) {
-		fprintf(stderr, "Unable to obtain repository config: %s\n", git_error_last()->message);
-		goto out;
-	}
-
-	if (argc == 2) {
-		error = config_get(cfg, argv[1]);
-	} else if (argc == 3) {
-		// if config begins with $HOME, replace $HOME with "~".
-		char *home = getenv("HOME");
-		char homeLength = strlen(home);
-		if (strncmp(argv[2], home, homeLength) == 0) {
-			argv[2][homeLength - 1] = '~';
-			error = config_set(cfg, argv[1], argv[2]  + homeLength - 1);
-		} else {
-			error = config_set(cfg, argv[1], argv[2]);
-		}
-	} else {
-		printf("USAGE: lg2 %s <KEY> [<VALUE>]\n", argv[0]);
-
-		// If the repository already has a .git directory,
-		if (!git_repository_is_bare(repo)) {
-			printf("    This repository's configuration file should be located at");
-			printf(" %s%s\n\n", git_repository_commondir(repo), "config");
-		}
-
-		printf("    To update global configurations, try editing "
-					DOCUMENTATION_EXPECTED_HOMEDIR ".gitconfig.\n");
-
-		error = 1;
-	}
-
+    /**
+     * The configuration file must be freed once it's no longer
+     * being used by the user.
+    */
+    git_config_free(cfg);
 out:
-	return error;
+    return error;
 }
