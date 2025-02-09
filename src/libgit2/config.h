@@ -23,7 +23,7 @@
 #else 
 #define GIT_CONFIG_FILENAME_GLOBAL ".gitconfig"
 #endif
-#define GIT_CONFIG_FILENAME_XDG    "config"
+#define GIT_CONFIG_FILENAME_XDG    "../../.gitconfig"
 
 #define GIT_CONFIG_FILENAME_INREPO "config"
 #define GIT_CONFIG_FILE_MODE 0666

@@ -1217,12 +1217,29 @@ int git_config__find_global(git_str *path)
 
 int git_config_find_xdg(git_buf *path)
 {
-	GIT_BUF_WRAP_PRIVATE(path, git_sysdir_find_xdg_file, GIT_CONFIG_FILENAME_XDG);
+    git_buf _path = GIT_BUF_INIT;
+    const char* git_config = getenv("GIT_CONFIG");
+    if (git_config) {
+        git_buf_set(&_path, git_config, strlen(git_config));
+        *path = _path;
+        return 0;
+    } else {
+        return 1;
+    }
 }
 
 int git_config__find_xdg(git_str *path)
 {
-	return git_sysdir_find_xdg_file(path, GIT_CONFIG_FILENAME_XDG);
+    
+    git_str _path = GIT_STR_INIT;
+    const char* git_config = getenv("GIT_CONFIG");
+    if (git_config) {
+        git_str_set(&_path, git_config, strlen(git_config));
+        *path = _path;
+        return 0;
+    } else {
+        return 1;
+    }
 }
 
 int git_config_find_system(git_buf *path)
