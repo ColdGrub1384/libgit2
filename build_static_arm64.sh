@@ -15,10 +15,10 @@ cmake $source_dir \
     -DREGEX_BACKEND=builtin -DBUILD_CLAR=OFF -DBUILD_TESTS=OFF -DUSE_SSH=ON -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF -DTHREADSAFE=OFF\
     -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_INSTALL_PREFIX=@rpath \
-    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_OSX_SYSROOT=${IOS_SDKROOT} \
     -DCMAKE_C_COMPILER=$(xcrun --sdk iphoneos -f clang) \
-    -DCMAKE_C_FLAGS="-arch arm64 -target arm64-apple-darwin19.6.0 -O2 -miphoneos-version-min=14 -I${source_dir}" \
+    -DCMAKE_C_FLAGS="-D_Debug=1 -arch arm64 -target arm64-apple-darwin19.6.0 -O2 -miphoneos-version-min=14 -I${source_dir}" \
     -DCMAKE_MODULE_LINKER_FLAGS="-arch arm64 -target arm64-apple-darwin19.6.0 -O2 -miphoneos-version-min=14 -undefined dynamic_lookup" \
     -DCMAKE_SHARED_LINKER_FLAGS="-arch arm64 -target arm64-apple-darwin19.6.0 -O2 -miphoneos-version-min=14 -undefined dynamic_lookup" \
     -DCMAKE_EXE_LINKER_FLAGS="-arch arm64 -target arm64-apple-darwin19.6.0 -O2 -miphoneos-version-min=14 -undefined dynamic_lookup" \
