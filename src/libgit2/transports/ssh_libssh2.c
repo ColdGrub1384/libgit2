@@ -1108,7 +1108,7 @@ static void shutdown_libssh2(void)
 
 int git_transport_ssh_libssh2_global_init(void)
 {
-	if (libssh2_init(0) < 0) {
+ 	if (libssh2_init(0) < 0) {
 		git_error_set(GIT_ERROR_SSH, "unable to initialize libssh2");
 		return -1;
 	}
