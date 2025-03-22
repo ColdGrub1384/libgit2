@@ -12,13 +12,7 @@ static void print_progress(const progress_data *pd)
 	int network_percent = pd->fetch_progress.total_objects > 0 ?
 		(100*pd->fetch_progress.received_objects) / pd->fetch_progress.total_objects :
 		0;
-	int index_percent = pd->fetch_progress.total_objects > 0 ?
-		(100*pd->fetch_progress.indexed_objects) / pd->fetch_progress.total_objects :
-		0;
 
-	int checkout_percent = pd->total_steps > 0
-		? (int)((100 * pd->completed_steps) / pd->total_steps)
-		: 0;
 	size_t kbytes = pd->fetch_progress.received_bytes / 1024;
 
 	if (pd->fetch_progress.total_objects &&
@@ -27,13 +21,9 @@ static void print_progress(const progress_data *pd)
 		       pd->fetch_progress.indexed_deltas,
 		       pd->fetch_progress.total_deltas);
 	} else {
-		printf("net %3d%% (%4" PRIuZ " kb, %5u/%5u)  /  idx %3d%% (%5u/%5u)  /  chk %3d%% (%4" PRIuZ "/%4" PRIuZ")%s\r",
+		printf("net %3d%% (%4" PRIuZ " kb, %5u/%5u)\r",
 		   network_percent, kbytes,
-		   pd->fetch_progress.received_objects, pd->fetch_progress.total_objects,
-		   index_percent, pd->fetch_progress.indexed_objects, pd->fetch_progress.total_objects,
-		   checkout_percent,
-		   pd->completed_steps, pd->total_steps,
-		   pd->path);
+		   pd->fetch_progress.received_objects, pd->fetch_progress.total_objects);
 	}
 }
 
@@ -41,7 +31,7 @@ static int sideband_progress(const char *str, int len, void *payload)
 {
 	(void)payload; /* unused */
 
-	printf("remote: %.*s", len, str);
+	printf("\nremote: %.*s", len, str);
 #if TARGET_OS_IPHONE
 	fflush(thread_stdout);
 #endif
@@ -89,19 +79,7 @@ int lg2_clone(git_repository *repo, int argc, char **argv)
 
 	/* Parse/validate args */
 	if (argc == 2) {
-		size_t chars_from_end = 0;
-		size_t full_len = strlen(url);
-		char *c = url + full_len - 1;
-
-		for (; c >= url; --c,++chars_from_end) {
-			if (*c == '/') {
-				break;
-			}
-		}
-
-		// Determine where the name of the path should start.
-		path = url + full_len - chars_from_end;
-
+        path = git_path_from_url(url);
 		printf("Cloning into ./%s\n", path);
 	} else if (argc == 3) {
 		path = argv[2];

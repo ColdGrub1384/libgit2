@@ -145,6 +145,9 @@ int main(int argc, char **argv)
 	fprintf(stderr, "Command not found: %s\n", argv[1]);
 
 shutdown:
+    
+    git_send_shutdown_notification(git_dir);
+    
 	git_repository_free(repo);
 	git_libgit2_shutdown();
 

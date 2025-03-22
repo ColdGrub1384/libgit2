@@ -181,6 +181,8 @@ int lg2_log(git_repository *repo, int argc, char *argv[])
 
 	git_pathspec_free(ps);
 	git_revwalk_free(s.walker);
+    
+    fprintf(stdout, "\n");
 
 	return 0;
 }
@@ -417,7 +419,7 @@ static void usage(const char *message, const char *arg)
 			" --max-count: Maximum number of commits to log\n"
 			" --author: Display only commits by the given author\n"
 			"Sorting options: \n"
-			" --date-order, --topo-order, --reverse");
+			" --date-order, --topo-order, --reverse\n");
 	exit(1);
 }
 

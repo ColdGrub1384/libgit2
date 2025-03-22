@@ -63,9 +63,16 @@ func getKeysForHost(_ _url: String) -> String? {
     let url = String(cString: _url)
     
     guard let keys = getKeysForHost(url) else {
-        let password = askPassword(title: "Password", message: "Enter SSH password")
-        return git_error_code(rawValue: git_credential_userpass_plaintext_new(out, "\(username)", "\(password)"))
+        if let password = ask(title: "Password", message: "Enter SSH password", isPassword: true) {
+            return git_error_code(rawValue: git_credential_userpass_plaintext_new(out, "\(username)", "\(password)"))
+        } else {
+            return git_error_code(-1);
+        }
     }
     
-    return git_error_code(rawValue: git_credential_ssh_key_new(out, "\(username)", "\(keys).pub", "\(keys)", askPassword(title: "Passphrase", message: "Enter passphrase for '\(NSString(string: keys).lastPathComponent)'.")))
+    if let password = ask(title: "Passphrase", message: "Enter passphrase for '\(NSString(string: keys).lastPathComponent)'.", isPassword: true) {
+        return git_error_code(rawValue: git_credential_ssh_key_new(out, "\(username)", "\(keys).pub", "\(keys)", password))
+    } else {
+        return git_error_code(-1);
+    }
 }

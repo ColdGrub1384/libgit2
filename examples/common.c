@@ -453,26 +453,29 @@ int cred_acquire_cb(git_credential **out,
     if (username_from_url) {
         if ((username = strdup(username_from_url)) == NULL)
             goto out;
-    } else if ((error = ask(&username, "Username:", 0)) < 0) {
+    } else if ((error = git_ask_input(&username, "Username", "Enter username to authenticate")) < 0) {
         goto out;
     }
 
     if (allowed_types & GIT_CREDENTIAL_SSH_KEY) {
         if ((allowed_types & GIT_CREDENTIAL_USERPASS_PLAINTEXT) && git_authenticate_using_password(url)) {
-            password = git_ask_password("Password", "Enter SSH password");
+            if ((error = git_ask_password(&password, "Password", "Enter SSH password")) < 0) {
+                goto out;
+            }
             error = git_credential_userpass_plaintext_new(out, username, password);
         } else {
             error = git_create_credentials_with_keys(out, username, url);
         }
     } else if (allowed_types & GIT_CREDENTIAL_USERPASS_PLAINTEXT) {
-        password = git_ask_password("Password", "Enter SSH password");
+        if ((error = git_ask_password(&password, "Password", "Enter password")) < 0) {
+            goto out;
+        }
         error = git_credential_userpass_plaintext_new(out, username, password);
     } else if (allowed_types & GIT_CREDENTIAL_USERNAME) {
         error = git_credential_username_new(out, username);
     }
 
 out:
-    free(username);
     if (!found_keys) {
         free(privkey);
         free(pubkey);
@@ -622,7 +625,7 @@ static int get_libssh2_cert_type(git_cert_hostkey *cert)
     }
 
     fprintf(stderr, "WARNING: Unknown remote certificate raw_type!\n");
-    return LIBSSH2_KNOWNHOST_KEY_UNKNOWN;
+    return (15<<18);
 }
 
 static int ask_add_knownhost_key(LIBSSH2_SESSION *session, LIBSSH2_KNOWNHOSTS *hosts,

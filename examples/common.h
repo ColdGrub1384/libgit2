@@ -98,9 +98,12 @@ extern int lg2_version(git_repository *repo, int argc, char **argv);
 extern int lg2_help(git_repository *repo, int argc, char **argv);
 
 char *git_path_from_url(const char *url);
-char *git_ask_password(const char *title, const char *message);
+int git_ask_password(char **out, const char *title, const char *message);
+int git_ask_input(char **out, const char *title, const char *message);
 git_error_code git_create_credentials_with_keys(git_credential **_out, const char *username, const char *url);
 bool git_authenticate_using_password(const char *url);
+void git_send_shutdown_notification(const char *repo_path);
+const char *git_get_current_branch_upstream(git_repository *repo);
 
 /**
  * Check libgit2 error code, printing error to stderr on failure and

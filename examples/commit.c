@@ -209,7 +209,11 @@ static int parse_options(commit_options *out, int argc, char **argv)
 				return 1;
 			}
 
-			out->message = argv[i];
+            if (!out->message) {
+                out->message = argv[i];
+            } else {
+                out->message = strcat(strcat(out->message, "\n"), argv[i]);
+            }
 		} else {
 			fprintf(stderr, "Unrecognised option: %s\n", arg);
 			return 1;

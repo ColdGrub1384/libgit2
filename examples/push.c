@@ -261,6 +261,8 @@ static int parse_args(git_repository *repo, push_opts *opts, int argc, char **ar
 	int i;
 	memset(opts, 0, sizeof(push_opts));
 
+    bool remote_name_needs_to_be_freed = false;
+    
 	for (i = 1; i < argc; i++) {
 		char *arg = argv[i];
 		if (strncmp(arg, "-", 1) != 0) {
@@ -279,7 +281,17 @@ static int parse_args(git_repository *repo, push_opts *opts, int argc, char **ar
 	}
 
 	if (i == argc) {
-		opts->remote_name = "origin";
+        const char *remote_name = git_get_current_branch_upstream(repo);
+        if (remote_name) {
+            opts->remote_name = (char *)remote_name;
+            remote_name_needs_to_be_freed = true;
+            printf("No remote given. Using the tracked remote: %s\n", remote_name);
+        } else {
+            fprintf(stderr, "The current branch main has no upstream branch.\n");
+            fprintf(stderr, "To push the current branch and set the remote as upstream, use\n\n");
+            fprintf(stderr, "\tlg2 push --set-upstream origin main\n");
+            return EXIT_FAILURE;
+        }
 	} else {
 		// push <options>... <remote> <refspec>... case
 		//                      ^^^
@@ -314,6 +326,9 @@ static int parse_args(git_repository *repo, push_opts *opts, int argc, char **ar
 		err = git_repository_head(&head, repo);
 		if (err == GIT_EUNBORNBRANCH || err == GIT_ENOTFOUND) {
 			fprintf(stderr, "Unable to find HEAD!\n");
+            if (remote_name_needs_to_be_freed) {
+                free(opts->remote_name);
+            }
 			return 1;
 		}
 
@@ -321,6 +336,9 @@ static int parse_args(git_repository *repo, push_opts *opts, int argc, char **ar
 		if (branch_name == NULL) {
 			fprintf(stderr, "Cannot push current branch; not currently on a branch.\n");
 			git_reference_free(head);
+            if (remote_name_needs_to_be_freed) {
+                free(opts->remote_name);
+            }
 			return 1;
 		}
 
@@ -332,6 +350,10 @@ static int parse_args(git_repository *repo, push_opts *opts, int argc, char **ar
 
 		printf("No refspecs given. Pushing: %s\n", opts->refspecs.strings[0]);
 	}
+    
+    if (remote_name_needs_to_be_freed) {
+        free(opts->remote_name);
+    }
 
 	return 0;
 }

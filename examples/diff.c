@@ -71,6 +71,12 @@ static void compute_diff_no_index(git_diff **diff, struct diff_options *o);
 
 int lg2_diff(git_repository *repo, int argc, char *argv[])
 {
+    
+    if (argc == 1) {
+        char *_argv[] = {"diff", "HEAD"};
+        return lg2_diff(repo, 2, _argv);
+    }
+    
 	git_tree *t1 = NULL, *t2 = NULL;
 	git_diff *diff;
 	struct diff_options o = {

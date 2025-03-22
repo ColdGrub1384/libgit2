@@ -60,10 +60,19 @@ int lg2_pull(git_repository *repo, int argc, char **argv)
 	const git_indexer_progress *stats;
 	git_fetch_options fetch_opts = GIT_FETCH_OPTIONS_INIT;
 
-	char *origin = "origin";
+    char *origin = NULL;
 	char *argv_merge[2];
+    bool remote_name_needs_to_be_freed = false;
 
-	if (argc == 2) {
+    if (argc < 2) {
+        origin = (char *)git_get_current_branch_upstream(repo);
+        if (!origin) {
+            origin = "origin";
+        } else {
+            remote_name_needs_to_be_freed = true;
+        }
+        printf("No remote given. Using the tracked remote: %s\n", origin);
+    } else if (argc == 2) {
 		origin = argv[1];
 	} else if (argc > 2) {
 		fprintf(stderr, "usage: %s pull [remote]\n", argv[-1]);
@@ -116,10 +125,16 @@ int lg2_pull(git_repository *repo, int argc, char **argv)
 	/* Done */
 
 	git_remote_free(remote);
-
+    if (remote_name_needs_to_be_freed) {
+        free(origin);
+    }
+    
 	return result;
 
  on_error:
 	git_remote_free(remote);
+    if (remote_name_needs_to_be_freed) {
+        free(origin);
+    }
 	return -1;
 }
