@@ -3,11 +3,11 @@
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
 if [ -z "$MAC_CATALYST" ]; then # iOS
-    PLATFORM="iphoneos"
-    ARCHITECTURE="arm64"
+    PLATFORM="$IOSSDK"
+    ARCHITECTURE="$iOSARCH"
     PYTHON_DIR="iOS"
-    SDK_NAME="iphoneos"
-    TARGET_TRIPLE="arm64-apple-darwin19.6.0"
+    SDK_NAME="$IOSSDK"
+    TARGET_TRIPLE="$iOSARCH-apple-darwin19.6.0"
     
     IOS_SDKROOT=$(xcrun --sdk iphoneos --show-sdk-path)
 else                            # Mac Catalyst
@@ -27,8 +27,8 @@ source_dir=$PWD
 export LIBSSH2_INCLUDE_DIR="${source_dir}/../libssh2/libssh2/include"
 export LIBSSH2_LIBRARY="${source_dir}/../libssh2/build-$PLATFORM.$ARCHITECTURE/src/libssh2.a"
 
-mkdir -p "build-$PLATFORM.$ARCHITECTURE"
-pushd "build-$PLATFORM.$ARCHITECTURE"
+mkdir -p "build/$PLATFORM.$ARCHITECTURE"
+pushd "build/$PLATFORM.$ARCHITECTURE"
 cmake $source_dir \
     -DREGEX_BACKEND=builtin -DBUILD_CLAR=OFF -DBUILD_TESTS=OFF -DUSE_SSH=ON -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF -DTHREADSAFE=OFF\
     -DBUILD_SHARED_LIBS=OFF \
