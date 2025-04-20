@@ -25,7 +25,7 @@ export M4=$(xcrun -f m4)
 source_dir=$PWD
 
 export LIBSSH2_INCLUDE_DIR="${source_dir}/../libssh2/libssh2/include"
-export LIBSSH2_LIBRARY="${source_dir}/../libssh2/build-$PLATFORM.$ARCHITECTURE/src/libssh2.a"
+export LIBSSH2_LIBRARY="${source_dir}/../libssh2/build/$PLATFORM.$ARCHITECTURE/src/libssh2.a"
 
 mkdir -p "build/$PLATFORM.$ARCHITECTURE"
 pushd "build/$PLATFORM.$ARCHITECTURE"
