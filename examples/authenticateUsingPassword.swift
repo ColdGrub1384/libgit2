@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import SshConfig
 
 /// Returns wether git should authenticate using password instead of keys on the given url.
 @_cdecl("git_authenticate_using_password") func authenticateUsingPassword(_ _url: UnsafePointer<CChar>) -> Bool {

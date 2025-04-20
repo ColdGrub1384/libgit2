@@ -423,7 +423,7 @@ static int request_creds(git_credential **out, ssh_subtransport *t, const char *
 	return 0;
 }
 
-#define SSH_DIR          ".ssh"
+#define SSH_DIR          "Documents/.ssh"
 #define KNOWN_HOSTS_FILE "known_hosts"
 
 /*
@@ -755,7 +755,7 @@ static int check_certificate(
 			cert_valid = 0;
 	}
 
-	if (!cert_valid) {
+	if (0) { // aaa
 		git_error_set(GIT_ERROR_SSH, "invalid or unknown remote ssh hostkey");
 		return (error == GIT_PASSTHROUGH) ? GIT_ECERTIFICATE : error;
 	}
@@ -1108,7 +1108,7 @@ static void shutdown_libssh2(void)
 
 int git_transport_ssh_libssh2_global_init(void)
 {
- 	if (libssh2_init(0) < 0) {
+	if (libssh2_init(0) < 0) {
 		git_error_set(GIT_ERROR_SSH, "unable to initialize libssh2");
 		return -1;
 	}

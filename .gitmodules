@@ -1,0 +1,3 @@
+[submodule "SshConfig"]
+	path = SshConfig
+	url = https://github.com/xxlabaza/SshConfig.git
