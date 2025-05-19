@@ -54,10 +54,19 @@ make
 
 if [ "$ARCHITECTURE" = "arm64" ]; then
     (find "src/libgit2/CMakeFiles/libgit2.dir" -name "*.o" -exec lipo -remove x86_64 "{}" -o "{}" \;) &> /dev/null
+    (find "src/util/CMakeFiles/util.dir" -name "*.o" -exec lipo -remove x86_64 "{}" -o "{}" \;) &> /dev/null
+    (find "deps" -name "*.o" -exec lipo -remove x86_64 "{}" -o "{}" \;) &> /dev/null
 else
     (find "src/libgit2/CMakeFiles/libgit2.dir" -name "*.o" -exec lipo -remove arm64 "{}" -o "{}" \;) &> /dev/null
+    (find "src/util/CMakeFiles/util.dir" -name "*.o" -exec lipo -remove arm64 "{}" -o "{}" \;) &> /dev/null
+    (find "deps" -name "*.o" -exec lipo -remove arm64 "{}" -o "{}" \;) &> /dev/null
 fi
 
 rm "libgit2.a"
 
-find "src/libgit2/CMakeFiles/libgit2.dir" -name "*.o" | xargs ar r "libgit2.a"
+find_sources() {
+    find "src/libgit2/CMakeFiles/libgit2.dir" -name "*.o"
+    find "src/util/CMakeFiles/util.dir" -name "*.o"
+    find "deps" -name "*.o"
+}
+find_sources | xargs ar r "libgit2.a"
