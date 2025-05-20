@@ -13,18 +13,33 @@
 extern "C" {
 #endif
 
+#define fork std_fork
+#define abort std_abort
+#define iswprint std_iswprint
+#define getwchar std_getwchar
+#define putwchar std_putwchar
+
 #include <unistd.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <stdlib.h>
+#include <wchar.h>
 
-/* #define errx compileError
+#undef fork
+#undef abort
+#undef iswprint
+#undef getwchar
+#undef putwchar
+#define abort() ios_exit(1)
+
+/*#define errx compileError
 #define err compileError
 #define warn compileError
-#define warnx compileError
+#define warnx compileError*/
 #ifndef printf
 #define printf(...) fprintf (thread_stdout, ##__VA_ARGS__)
-#endif */
+#endif
 
 #define putchar(a) fputc(a, thread_stdout)
 #define getchar() fgetc(thread_stdin)
@@ -42,7 +57,6 @@ extern "C" {
   #define putw ios_putw
   #define putp ios_putp
   #define fflush ios_fflush
-  #define abort() ios_exit(1)
 #endif
 
 // Thread-local input and output streams
@@ -50,6 +64,7 @@ extern __thread FILE* thread_stdin;
 extern __thread FILE* thread_stdout;
 extern __thread FILE* thread_stderr;
 
+#define fork ios_fork
 #define exit ios_exit
 #define _exit ios_exit
 #define kill ios_killpid

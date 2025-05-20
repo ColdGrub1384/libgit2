@@ -2,7 +2,7 @@
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
-if [ -z "$MAC_CATALYST" ]; then # iOS
+if [ "$IOSSDK" = "iphoneos" ] || [ "$IOSSDK" = "iphonesimulator" ]; then  # iOS
     PLATFORM="$IOSSDK"
     ARCHITECTURE="$IOSARCH"
     PYTHON_DIR="iOS"
@@ -15,7 +15,35 @@ if [ -z "$MAC_CATALYST" ]; then # iOS
     fi
     
     IOS_SDKROOT=$(xcrun --sdk $SDK_NAME --show-sdk-path)
-else                            # Mac Catalyst
+elif [ "$WATCHOSSDK" = "watchos" ] || [ "$WATCHOSSDK" = "watchsimulator" ]; then  # watchOS
+    PLATFORM="$WATCHOSSDK"
+    ARCHITECTURE="$WATCHOSARCH"
+    PYTHON_DIR="watchOS"
+    SDK_NAME="$WATCHOSSDK"
+    ADDITIONAL_FLAGS="-DHAVE_FORK=0"
+    
+    if [ "$PLATFORM" = "watchsimulator" ]; then
+        TARGET_TRIPLE="$WATCHOSARCH-apple-watchos6.0-simulator"
+    else
+        TARGET_TRIPLE="$WATCHOSARCH-apple-watchos6.0"
+    fi
+    
+    IOS_SDKROOT=$(xcrun --sdk $SDK_NAME --show-sdk-path)
+elif [ "$TVOSSDK" = "appletvos" ] || [ "$TVOSSDK" = "appletvsimulator" ]; then         # tvOS
+    PLATFORM="$TVOSSDK"
+    ARCHITECTURE="$TVOSARCH"
+    PYTHON_DIR="tvOS"
+    SDK_NAME="$TVOSSDK"
+    ADDITIONAL_FLAGS="-DHAVE_FORK=0"
+    
+    if [ "$PLATFORM" = "appletvsimulator" ]; then
+        TARGET_TRIPLE="$WATCHOSARCH-apple-tvos14.0-simulator"
+    else
+        TARGET_TRIPLE="$WATCHOSARCH-apple-tvos14.0"
+    fi
+    
+    IOS_SDKROOT=$(xcrun --sdk $SDK_NAME --show-sdk-path)
+elif [ "$MAC_CATALYST" = "arm64" ] || [ "$MAC_CATALYST" = "x86_64" ]; then         # Mac Catalyst
     PLATFORM="maccatalyst"
     ARCHITECTURE="$MAC_CATALYST"
     PYTHON_DIR="MacCatalyst"
@@ -43,10 +71,10 @@ cmake $source_dir \
     -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_OSX_SYSROOT=${IOS_SDKROOT} \
     -DCMAKE_C_COMPILER=$(xcrun --sdk $SDK_NAME -f clang) \
-    -DCMAKE_C_FLAGS="-D_Debug=1 -arch $ARCHITECTURE -target $TARGET_TRIPLE -O2 -I${source_dir}" \
-    -DCMAKE_MODULE_LINKER_FLAGS="-arch $ARCHITECTURE -target $TARGET_TRIPLE -O2 -undefined dynamic_lookup" \
-    -DCMAKE_SHARED_LINKER_FLAGS="-arch $ARCHITECTURE -target $TARGET_TRIPLE -O2 -undefined dynamic_lookup" \
-    -DCMAKE_EXE_LINKER_FLAGS="-arch $ARCHITECTURE -target $TARGET_TRIPLE -O2 -undefined dynamic_lookup" \
+    -DCMAKE_C_FLAGS="-include include/ios_error.h -D_Debug=1 -target $TARGET_TRIPLE -O2 -I${source_dir} $ADDITIONAL_FLAGS" \
+    -DCMAKE_MODULE_LINKER_FLAGS="-target $TARGET_TRIPLE -O2 -undefined dynamic_lookup" \
+    -DCMAKE_SHARED_LINKER_FLAGS="-target $TARGET_TRIPLE -O2 -undefined dynamic_lookup" \
+    -DCMAKE_EXE_LINKER_FLAGS="-target $TARGET_TRIPLE -O2 -undefined dynamic_lookup" \
     -DCMAKE_LIBRARY_PATH=${IOS_SDKROOT}/lib/ \
     -DCMAKE_INCLUDE_PATH="${LIBSSH2_INCLUDE_DIR};${IOS_SDKROOT}/include/" \
     -DLIBSSH2_LIBRARY="${LIBSSH2_LIBRARY}"
@@ -56,6 +84,32 @@ if [ "$ARCHITECTURE" = "arm64" ]; then
     (find "src/libgit2/CMakeFiles/libgit2.dir" -name "*.o" -exec lipo -remove x86_64 "{}" -o "{}" \;) &> /dev/null
     (find "src/util/CMakeFiles/util.dir" -name "*.o" -exec lipo -remove x86_64 "{}" -o "{}" \;) &> /dev/null
     (find "deps" -name "*.o" -exec lipo -remove x86_64 "{}" -o "{}" \;) &> /dev/null
+    
+    if [ "$WATCHOSSDK" = "watchos" ]; then
+        (find "src/libgit2/CMakeFiles/libgit2.dir" -name "*.o" -exec lipo -remove armv7k "{}" -o "{}" \;) &> /dev/null
+        (find "src/util/CMakeFiles/util.dir" -name "*.o" -exec lipo -remove armv7k "{}" -o "{}" \;) &> /dev/null
+        (find "deps" -name "*.o" -exec lipo -remove armv7k "{}" -o "{}" \;) &> /dev/null
+        
+        (find "src/libgit2/CMakeFiles/libgit2.dir" -name "*.o" -exec lipo -remove arm64_32 "{}" -o "{}" \;) &> /dev/null
+        (find "src/util/CMakeFiles/util.dir" -name "*.o" -exec lipo -remove arm64_32 "{}" -o "{}" \;) &> /dev/null
+        (find "deps" -name "*.o" -exec lipo -remove arm64_32 "{}" -o "{}" \;) &> /dev/null
+    fi
+elif [ "$ARCHITECTURE" = "arm64_32" ] && [ "$WATCHOSSDK" = "watchos" ] ; then
+    (find "src/libgit2/CMakeFiles/libgit2.dir" -name "*.o" -exec lipo -remove armv7k "{}" -o "{}" \;) &> /dev/null
+    (find "src/util/CMakeFiles/util.dir" -name "*.o" -exec lipo -remove armv7k "{}" -o "{}" \;) &> /dev/null
+    (find "deps" -name "*.o" -exec lipo -remove armv7k "{}" -o "{}" \;) &> /dev/null
+        
+    (find "src/libgit2/CMakeFiles/libgit2.dir" -name "*.o" -exec lipo -remove arm64 "{}" -o "{}" \;) &> /dev/null
+    (find "src/util/CMakeFiles/util.dir" -name "*.o" -exec lipo -remove arm64 "{}" -o "{}" \;) &> /dev/null
+    (find "deps" -name "*.o" -exec lipo -remove arm64 "{}" -o "{}" \;) &> /dev/null
+elif [ "$ARCHITECTURE" = "armv7k" ] && [ "$WATCHOSSDK" = "watchos" ] ; then
+    (find "src/libgit2/CMakeFiles/libgit2.dir" -name "*.o" -exec lipo -remove arm64 "{}" -o "{}" \;) &> /dev/null
+    (find "src/util/CMakeFiles/util.dir" -name "*.o" -exec lipo -remove arm64 "{}" -o "{}" \;) &> /dev/null
+    (find "deps" -name "*.o" -exec lipo -remove arm64 "{}" -o "{}" \;) &> /dev/null
+        
+    (find "src/libgit2/CMakeFiles/libgit2.dir" -name "*.o" -exec lipo -remove arm64_32 "{}" -o "{}" \;) &> /dev/null
+    (find "src/util/CMakeFiles/util.dir" -name "*.o" -exec lipo -remove arm64_32 "{}" -o "{}" \;) &> /dev/null
+    (find "deps" -name "*.o" -exec lipo -remove arm64_32 "{}" -o "{}" \;) &> /dev/null
 else
     (find "src/libgit2/CMakeFiles/libgit2.dir" -name "*.o" -exec lipo -remove arm64 "{}" -o "{}" \;) &> /dev/null
     (find "src/util/CMakeFiles/util.dir" -name "*.o" -exec lipo -remove arm64 "{}" -o "{}" \;) &> /dev/null
