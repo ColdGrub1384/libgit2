@@ -5,12 +5,18 @@ import PackageDescription
 
 let package = Package(
     name: "lg2",
-    platforms: [.iOS(.v13), .tvOS(.v13), .watchOS(.v6), .macCatalyst(.v13), .visionOS(.v1)],
+    platforms: [
+	.iOS(.v13),
+	.tvOS(.v13),
+	.watchOS(.v6),
+	.macCatalyst(.v13),
+	.visionOS(.v1)
+    ],
     products: [
-        .library(
-            name: "lg2",
+	.library(
+	    name: "lg2",
 	    type: .dynamic, targets: ["examples", "examples-swift"],
-        ),
+	),
     ],
     dependencies: [
 	.package(id: "pyto.apple-git2", from: "1.9.0"),
@@ -19,14 +25,15 @@ let package = Package(
 	.package(url: "https://github.com/xxlabaza/SshConfig.git", from: "1.0.1")
     ],
     targets: [
-        .target(
-            name: "examples",
+	.target(
+	    name: "examples",
 	    dependencies: [
 		.product(name: "git2", package: "pyto.apple-git2"),
-		.product(name: "ssh2", package: "pyto.apple-ssh2")
+		.product(name: "ssh2", package: "pyto.apple-ssh2"),
+		.target(name: "examples-swift")
 	    ],
 	    publicHeadersPath: "include"
-        ),
+	),
 	.target(
 	    name: "examples-swift",
 	    dependencies: [
@@ -39,3 +46,4 @@ let package = Package(
 	),
     ]
 )
+
