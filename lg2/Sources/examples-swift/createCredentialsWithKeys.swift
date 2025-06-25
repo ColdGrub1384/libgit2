@@ -7,15 +7,15 @@
 //
 
 import Foundation
-import examples
 import SshConfig
+import git
 
 /// Returns the path of a key to use for connecting to the given host.
 func getKeysForHost(_ _url: String) -> String? {
     guard let url = URL(string: _url) else {
         return nil
     }
-    
+
     guard let host = url.host else {
         return nil
     }

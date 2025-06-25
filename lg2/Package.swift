@@ -15,7 +15,7 @@ let package = Package(
     products: [
 	.library(
 	    name: "lg2",
-	    type: .dynamic, targets: ["examples", "examples-swift"],
+	    type: .dynamic, targets: ["examples", "examples-swift", "git"],
 	),
     ],
     dependencies: [
@@ -25,6 +25,14 @@ let package = Package(
 	.package(url: "https://github.com/xxlabaza/SshConfig.git", from: "1.0.1")
     ],
     targets: [
+	.target(
+	    name: "git",
+	    dependencies: [
+		.product(name: "git2", package: "pyto.apple-git2"),
+		.product(name: "ssh2", package: "pyto.apple-ssh2"),
+	    ],
+	    publicHeadersPath: "include"
+	),
 	.target(
 	    name: "examples",
 	    dependencies: [
@@ -37,12 +45,10 @@ let package = Package(
 	.target(
 	    name: "examples-swift",
 	    dependencies: [
-		.target(name: "examples"),
-		.product(name: "git2", package: "pyto.apple-git2"),
-		.product(name: "ssh2", package: "pyto.apple-ssh2"),
 		.product(name: "ios_system", package: "pyto.apple-ios_system"),
-		.product(name: "SshConfig", package: "SshConfig")
-	    ]
+		.product(name: "SshConfig", package: "SshConfig"),
+		.target(name: "git")
+	    ],
 	),
     ]
 )
