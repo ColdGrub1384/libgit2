@@ -1,6 +1,9 @@
 #ifndef INCLUDE_examples_args_h__
 #define INCLUDE_examples_args_h__
 
+#include <git2/git2.h>
+#include <stdlib.h>
+
 /**
  * Argument-processing helper structure
  */

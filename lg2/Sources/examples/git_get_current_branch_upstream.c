@@ -8,7 +8,7 @@
 
 #include <string.h>
 #include <stdio.h>
-#include "git2.h"
+#include <git2/git2.h>
 
 const char *git_get_current_branch_upstream(git_repository *repo) {
     git_branch_iterator *it = NULL;

@@ -1,0 +1,39 @@
+{
+  "originHash" : "3a90b224063a40424251f93efa3708c9a8c8d3fe504206264169bc45b787bf9f",
+  "pins" : [
+    {
+      "identity" : "pyto.apple-git2",
+      "kind" : "registry",
+      "location" : "",
+      "state" : {
+        "version" : "1.9.0"
+      }
+    },
+    {
+      "identity" : "pyto.apple-ios_system",
+      "kind" : "registry",
+      "location" : "",
+      "state" : {
+        "version" : "3.0.0"
+      }
+    },
+    {
+      "identity" : "pyto.apple-ssh2",
+      "kind" : "registry",
+      "location" : "",
+      "state" : {
+        "version" : "1.11.1"
+      }
+    },
+    {
+      "identity" : "sshconfig",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/xxlabaza/SshConfig.git",
+      "state" : {
+        "revision" : "7974cd36d2b8f9d841e9c9aa83b24581dfdf55be",
+        "version" : "1.0.1"
+      }
+    }
+  ],
+  "version" : 3
+}

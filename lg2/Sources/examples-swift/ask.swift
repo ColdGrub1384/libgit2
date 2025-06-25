@@ -32,13 +32,22 @@ func gitAskInput(out: UnsafeMutablePointer<UnsafeMutablePointer<CChar>>, title: 
     return 0
 }
 
+fileprivate struct Password {
+    
+    @MainActor static var password: String?
+}
+
 /// Asks for input in an alert view controller.
 func ask(title: String, message: String, isPassword: Bool) -> String? {
+    
+    #if os(watchOS)
+    nil
+    #else
+    
     guard !Thread.current.isMainThread else {
         fatalError()
     }
-    
-    var password: String?
+
     let semaphore = DispatchSemaphore(value: 0)
     
     DispatchQueue.main.async {
@@ -50,7 +59,7 @@ func ask(title: String, message: String, isPassword: Bool) -> String? {
             }
             
             if scene.activationState == .foregroundActive {
-                if #available(iOS 15.0, *) {
+		if #available(iOS 15.0, tvOS 15.0, *) {
                     vc = scene.keyWindow?.rootViewController?.presentedViewController ?? scene.keyWindow?.rootViewController
                 } else {
                     vc = scene.windows.first?.rootViewController?.presentedViewController ?? scene.windows.first?.rootViewController
@@ -70,11 +79,11 @@ func ask(title: String, message: String, isPassword: Bool) -> String? {
             $0.placeholder = title
         }
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: { _ in
-            password = nil
+	    Password.password = nil
             semaphore.signal()
         }))
         alert.addAction(UIAlertAction(title: "Send", style: .default, handler: { _ in
-            password = alert.textFields?.first?.text ?? ""
+	    Password.password = alert.textFields?.first?.text ?? ""
             semaphore.signal()
         }))
         
@@ -83,5 +92,11 @@ func ask(title: String, message: String, isPassword: Bool) -> String? {
     
     semaphore.wait()
     
+    var password: String?
+    DispatchQueue.main.sync {
+	password = Password.password
+    }
+    
     return password
+    #endif
 }

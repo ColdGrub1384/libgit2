@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <git2.h>
+#include <git2/git2.h>
 #include <fcntl.h>
 
 #include <stdbool.h>

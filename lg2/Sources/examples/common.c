@@ -23,7 +23,7 @@
 #include <errno.h>
 #include <limits.h>
 
-#include <libssh2.h>
+#include <ssh2/libssh2.h>
 
 void check_lg2(int error, const char *message, const char *extra)
 {
